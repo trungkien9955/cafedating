@@ -1,0 +1,311 @@
+import 'package:cafedating/core/common/widgets/app_chip.dart';
+import 'package:cafedating/core/common/widgets/app_dialog.dart';
+import 'package:cafedating/core/common/widgets/app_loader.dart';
+import 'package:cafedating/core/common/widgets/place_types_widget.dart';
+import 'package:cafedating/core/common/widgets/star_rating.dart';
+import 'package:cafedating/core/constants/app_constants.dart';
+import 'package:cafedating/features/home/controller/home_controller.dart';
+import 'package:cafedating/features/home/notifier/async_place_details_notifier.dart';
+import 'package:cafedating/features/home/notifier/google_places_notifier.dart';
+import 'package:cafedating/features/home/notifier/google_places_search_key_notifier.dart';
+import 'package:cafedating/features/home/notifier/location_notifier.dart';
+import 'package:cafedating/features/home/notifier/new_key_notifier.dart';
+import 'package:cafedating/features/home/notifier/place_details_async.dart';
+import 'package:cafedating/features/home/notifier/place_details_notifier.dart';
+import 'package:cafedating/features/home/notifier/place_id_notifier.dart';
+import 'package:cafedating/features/home/notifier/position_notifier.dart';
+import 'package:cafedating/features/home/notifier/selected_position_notifier.dart';
+import 'package:cafedating/features/home/notifier/user_location_notifier.dart';
+import 'package:cafedating/features/loader/loader_notifier.dart';
+import 'package:cafedating/models/google_places_response_item.dart';
+import 'package:cafedating/models/place_details.dart';
+import 'package:cafedating/models/selected_position.dart';
+import 'package:cafedating/theme/app_theme.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geolocator/geolocator.dart';
+
+class GooglePlaceAutocomplete extends ConsumerStatefulWidget {
+  const GooglePlaceAutocomplete({super.key});
+
+  @override
+  ConsumerState<GooglePlaceAutocomplete> createState() =>
+      _GooglePlaceAutocompleteState();
+}
+
+class _GooglePlaceAutocompleteState
+    extends ConsumerState<GooglePlaceAutocomplete> {
+  TextEditingController placesTextEditingController = TextEditingController();
+  @override
+  void initState() {
+    super.initState();
+    placesTextEditingController.addListener(_listener);
+  }
+
+  @override
+  void dispose() {
+    placesTextEditingController.removeListener(_listener);
+    super.dispose();
+  }
+
+  String searchKey = '';
+  List<GooglePlacesResponseItem> googlePlaceList = [];
+  GooglePlacesResponseItem selectedPlace = GooglePlacesResponseItem(
+      description: '',
+      matched_substrings: [],
+      place_id: '',
+      reference: '',
+      structured_formatting: {},
+      terms: [],
+      types: []);
+  void updateSelectedPlace(selectedPlace) {
+    setState(() {
+      selectedPlace = selectedPlace;
+    });
+  }
+
+  void _listener() {
+    // setState(() {
+    //   searchKey = placesTextEditingController.text;
+    //   HomeController(ref: ref, context: context)
+    //       .fetchGooglePlaces(searchKey)
+    //       .then((value) {
+    //     setState(() {
+    //       googlePlaceList = value;
+    //     });
+    //   });
+    // });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print('autocomplete $googlePlaceList');
+    // final googlePlacesData = ref.watch(googlePlacesNotifierProvider);
+    // final googlePlacesAsync = ref.watch(googlePlacesAsyncProvider);
+    // final AsyncValue<PlaceDetails> placeDetailsAsync =
+    //     ref.watch(placeDetailsAsyncProvider(selectedPlace!.place_id));
+    final locationData = ref.watch(userLocationNotifierProvider);
+    // final asyncPlaceDetails =
+    //     ref.watch(asyncPlaceDetailsNotifierProvider(selectedPlace.place_id));
+    ref.listen(locationProvider, (prev, next) {
+      if (next.hasValue) {
+        ref
+            .watch(userLocationNotifierProvider.notifier)
+            .updateUserLocation(next.value!);
+      }
+    });
+    // ref.listen<AsyncValue<PlaceDetails>>(placeDetailsAsyncProvider,
+    //     (prev, next) {
+    //   if (next.hasValue) {
+    //     showDialog<void>(
+    //       context: context,
+    //       barrierDismissible: false, // user must tap button!
+    //       builder: (BuildContext context) {
+    //         return AlertDialog(
+    //           title: Text(next.value!.name),
+    //           insetPadding: EdgeInsets.symmetric(horizontal: 16),
+    //           content: SingleChildScrollView(
+    //             child: Column(
+    //               children: [
+    //                 Container(
+    //                   width: MediaQuery.of(context).size.width,
+    //                   height: 144,
+    //                   decoration: BoxDecoration(
+    //                     borderRadius: BorderRadius.circular(12),
+    //                     image: const DecorationImage(
+    //                       fit: BoxFit.fill,
+    //                       image: NetworkImage(
+    //                           'https://encrypted-tbn1.gstatic.com/licensed-image?q=tbn:ANd9GcTkQDxri7SjYonNa8XBvJWpVF5DGxaodPkKe2ZF909lpLOt3SLEbgAsbbC3rAxpoXV9Y_2cycdcF5xswxce6rCRTSRDvXo0qzxEH3UQGA'),
+    //                     ),
+    //                   ),
+    //                 ),
+    //                 StarRating(rating: next.value!.rating ?? 0),
+    //                 Row(
+    //                   children: [
+    //                     Icon(Icons.location_on),
+    //                     Text(next.value!.formatted_address)
+    //                   ],
+    //                 ),
+    //                 Row(
+    //                   children: [
+    //                     Icon(Icons.online_prediction),
+    //                     Text('Online:'),
+    //                     Padding(
+    //                       padding: const EdgeInsets.all(4.0),
+    //                       child: AppChip(
+    //                         avatar: Icon(
+    //                           Icons.woman,
+    //                           color: Colors.white,
+    //                         ),
+    //                         label: Text('20'),
+    //                         hasBgColor: true,
+    //                         bgColor: AppTheme.pinkAccent,
+    //                       ),
+    //                     ),
+    //                     Padding(
+    //                       padding: const EdgeInsets.all(4.0),
+    //                       child: AppChip(
+    //                         avatar: Icon(Icons.man, color: Colors.white),
+    //                         label: Text('20'),
+    //                         hasBgColor: true,
+    //                         bgColor: AppTheme.blueAccent,
+    //                       ),
+    //                     ),
+    //                   ],
+    //                 ),
+    //                 PlaceTypesWidget(types: ['cafe', 'restaurant']),
+    //               ],
+    //             ),
+    //           ),
+    //           actions: <Widget>[
+    //             TextButton(
+    //               child: const Text('OK'),
+    //               onPressed: () {
+    //                 Navigator.of(context).pop();
+    //                 ref
+    //                     .read(selectedPositionNotifierProvider.notifier)
+    //                     .updateSelectedPosition(SelectedPosition(
+    //                         lat: next.value!.geometry['location']['lat'],
+    //                         lng: next.value!.geometry['location']['lng']));
+    //               },
+    //             ),
+    //           ],
+    //         );
+    //       },
+    //     );
+    //   }
+    //   if (next.hasError) {
+    //     AppDialog.showSimpleDialog(context,
+    //         text: 'Không thể tải địa điểm', onClose: () {});
+    //   }
+    // });
+    // ref.listen(googlePlacesAsyncProvider, (prev, next) {
+    //   if (next.hasValue) {
+    //     ref
+    //         .watch(googlePlacesNotifierProvider.notifier)
+    //         .updateGooglePlaces(next.value!);
+    //   }
+    // });
+
+    return Column(
+      children: [
+        Column(children: [
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 1,
+                  child: Row(
+                    children: [
+                      Icon(Icons.my_location),
+                      SizedBox(
+                        width: 8,
+                      ),
+                      Flexible(
+                          child: Text(
+                        locationData.location,
+                        style: TextStyle(fontSize: 10),
+                      ))
+                    ],
+                  ),
+                ),
+                Expanded(
+                  flex: 1,
+                  child: Row(
+                    children: [
+                      Icon(Icons.location_on),
+                      switch (placeDetailsAsync) {
+                        AsyncData(:final value) => Text(value.name),
+                        AsyncError() => SizedBox.shrink(),
+                        _ => AppLoader()
+                      }
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ]),
+        Autocomplete<GooglePlacesResponseItem>(
+          optionsBuilder: (TextEditingValue googlePlacesTextEditingValue) {
+            // if user is input nothing
+            if (googlePlacesTextEditingValue.text == '') {
+              return const Iterable<GooglePlacesResponseItem>.empty();
+            }
+            // List<GooglePlacesResponseItem> placesData = [];
+
+            // for (var i = 0; i < googlePlacesData.length; i++) {
+            //   placesData.add(googlePlacesData[i]);
+            // }
+
+            // List<GooglePlacesResponseItem> places =
+            //     List<GooglePlacesResponseItem>.from(placesData);
+            return googlePlaceList.where((GooglePlacesResponseItem option) {
+              return option.description
+                  .contains(googlePlacesTextEditingValue.text.toLowerCase());
+            });
+          },
+          displayStringForOption: (option) => option.description,
+          fieldViewBuilder: ((context, textEditingController, focusNode,
+                  onFieldSubmitted) =>
+              TextFormField(
+                controller: placesTextEditingController,
+                focusNode: focusNode,
+                onFieldSubmitted: (value) {},
+                decoration: InputDecoration(
+                    contentPadding:
+                        EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                    hintText: "Search location",
+                    filled: true,
+                    fillColor: Colors.white,
+                    suffixIconColor: AppTheme.primaryColorLight,
+                    suffixIcon: placesTextEditingController.text.length > 0
+                        ? IconButton(
+                            icon: Icon(Icons.clear),
+                            onPressed: () {
+                              placesTextEditingController.clear();
+                              setState(() {
+                                searchKey = '';
+                              });
+                            },
+                          )
+                        : SizedBox.shrink(),
+                    prefixIcon: IconButton(
+                      onPressed: selectedPlace.place_id == ''
+                          ? null
+                          : () {
+                              HomeController(ref: ref, context: context)
+                                  .fetchPlaceDetails(selectedPlace.place_id);
+                            },
+                      icon: Icon(Icons.search, color: AppTheme.primaryColor),
+                      disabledColor: Colors.grey,
+                    ),
+                    prefixIconColor: AppTheme.primaryColorLight,
+                    enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white),
+                        borderRadius: BorderRadius.circular(8)),
+                    focusedBorder: OutlineInputBorder(
+                        borderSide:
+                            BorderSide(color: AppTheme.primaryColorLight!),
+                        borderRadius: BorderRadius.circular(8))),
+                onChanged: (value) {
+                  HomeController(ref: ref, context: context)
+                      .fetchGooglePlaces(searchKey)
+                      .then((value) {
+                    setState(() {
+                      googlePlaceList = value;
+                    });
+                  });
+                },
+              )),
+          onSelected: (GooglePlacesResponseItem place) {
+            setState(() {
+              selectedPlace = place;
+            });
+          },
+        ),
+      ],
+    );
+  }
+}
